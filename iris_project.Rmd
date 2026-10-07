@@ -1,0 +1,342 @@
+---
+output:
+  pdf_document:
+    number_sections: true
+fontsize: 11pt
+geometry: margin=1in
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center")
+```
+
+\begin{titlepage}
+\centering
+\vspace*{4cm}
+{\LARGE\bfseries Mini Project: Analysis of the Iris Dataset in R\par}
+\vspace{1.5cm}
+{\Large DTS 211 - Introduction to R Programming\par}
+\vspace{3cm}
+{\large Name: Timothy Sodeinde\par}
+\vspace{0.4cm}
+{\large Reg No: 2025/B/DSC/0184\par}
+\vspace{0.4cm}
+{\large Date: October 7, 2026\par}
+\vfill
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+# Introduction
+
+The Iris dataset is one of the most famous datasets in statistics. It was
+collected by Edgar Anderson and made popular by Ronald Fisher in 1936. It
+comes built into R, so we do not need to download anything.
+
+The dataset has 150 flowers. Each flower belongs to one of three species:
+setosa, versicolor and virginica. There are 50 flowers of each species. For
+every flower, four measurements were taken in centimetres: sepal length,
+sepal width, petal length and petal width.
+
+The purpose of this project is to explore the data, draw some plots, work out
+simple summary statistics, and then build a model that can tell the species
+of a flower from its four measurements.
+
+# Methodology
+
+The analysis was done in R in the following steps:
+
+1. **Data import and exploration.** The data was loaded with `data(iris)`. Then
+   `head()`, `str()` and `summary()` were used to see what the data looks like.
+2. **Data visualisation.** Base R plots were used. A pair plot shows every
+   pair of features at once, so it is a quick way to see which features
+   separate the species. Boxplots compare each feature across the three
+   species. Histograms show the shape of each variable. Finally, a scatter
+   plot of petal length against petal width was drawn, because the pair plot
+   suggested that the petal measurements separate the species best.
+3. **Statistical summary.** The mean, median and standard deviation of each
+   feature were calculated with `mean()`, `median()` and `sd()`.
+4. **Classification.** The data was split into 70% training and 30% testing
+   using `sample()` after `set.seed(123)`, so the results can be repeated.
+   A k-nearest neighbours (k-NN) model with k = 5 was fitted using `knn()`
+   from the `class` package. k-NN was chosen because it is simple to
+   understand, needs no special assumptions about the data, and works well
+   when the groups form clear clusters, which the plots showed. The model
+   was checked with a confusion matrix and the accuracy on the test set.
+
+# Results and Discussion
+
+## Data import and exploration
+
+```{r}
+# load the dataset
+data(iris)
+
+# first six rows
+head(iris)
+```
+
+The first rows show the four measurement columns and the `Species` column.
+All the first rows are setosa because the data is sorted by species.
+
+```{r}
+# structure of the data
+str(iris)
+```
+
+The data has 150 rows and 5 columns. The four measurements are numeric
+(`num`) and `Species` is a factor with 3 levels.
+
+```{r}
+# summary of each column
+summary(iris)
+```
+
+The summary shows there are no missing values and each species has exactly 50
+flowers. Petal length has the biggest range, from 1.0 to 6.9 cm, while sepal
+width has the smallest range, from 2.0 to 4.4 cm.
+
+## Data visualisation
+
+### Pair plot
+
+```{r, fig.width=7, fig.height=7}
+# colours for the three species
+colours <- c("red", "green3", "blue")
+
+# pair plot of the four features
+pairs(iris[, 1:4], col = colours[iris$Species], pch = 19,
+      main = "Pair Plot of Iris Features")
+```
+
+In the pair plot, red is setosa, green is versicolor and blue is virginica.
+Setosa (red) is clearly separated from the other two species in almost every
+panel. Versicolor and virginica overlap a bit, especially in the sepal
+plots, but they are much more separated in the petal plots.
+
+### Boxplots by species
+
+```{r, fig.width=7, fig.height=7}
+# 2 by 2 grid of plots
+par(mfrow = c(2, 2))
+
+boxplot(Sepal.Length ~ Species, data = iris, col = colours,
+        main = "Sepal Length", ylab = "cm")
+boxplot(Sepal.Width ~ Species, data = iris, col = colours,
+        main = "Sepal Width", ylab = "cm")
+boxplot(Petal.Length ~ Species, data = iris, col = colours,
+        main = "Petal Length", ylab = "cm")
+boxplot(Petal.Width ~ Species, data = iris, col = colours,
+        main = "Petal Width", ylab = "cm")
+
+# back to one plot at a time
+par(mfrow = c(1, 1))
+```
+
+The boxplots show that virginica has the longest sepals and the biggest
+petals, and setosa has the smallest petals. Setosa is different for sepal
+width, because it has the widest sepals of the three. For petal length and
+petal width, the boxes of
+the three species do not overlap at all, which means the petals are very
+useful for telling the species apart.
+
+### Histograms
+
+```{r, fig.width=7, fig.height=7}
+par(mfrow = c(2, 2))
+
+hist(iris$Sepal.Length, col = "lightblue",
+     main = "Sepal Length", xlab = "cm")
+hist(iris$Sepal.Width, col = "lightgreen",
+     main = "Sepal Width", xlab = "cm")
+hist(iris$Petal.Length, col = "pink",
+     main = "Petal Length", xlab = "cm")
+hist(iris$Petal.Width, col = "orange",
+     main = "Petal Width", xlab = "cm")
+
+par(mfrow = c(1, 1))
+```
+
+Sepal length and sepal width look roughly bell shaped. Petal length and petal
+width are different: they have two separate groups. The small group on the
+left is the setosa flowers and the bigger group on the right is versicolor
+and virginica together.
+
+### Scatter plot of petal length and petal width
+
+```{r, fig.width=6.5, fig.height=5}
+plot(iris$Petal.Length, iris$Petal.Width,
+     col = colours[iris$Species], pch = 19,
+     main = "Petal Length vs Petal Width",
+     xlab = "Petal Length (cm)", ylab = "Petal Width (cm)")
+
+legend("topleft", legend = levels(iris$Species),
+       col = colours, pch = 19)
+```
+
+This plot shows the three species as three groups. Setosa sits alone in the
+bottom left corner. Versicolor is in the middle and virginica is at the top
+right, with only a small overlap between them. It also shows that flowers
+with longer petals also have wider petals.
+
+## Statistical summary
+
+```{r}
+# mean of each feature
+mean(iris$Sepal.Length)
+mean(iris$Sepal.Width)
+mean(iris$Petal.Length)
+mean(iris$Petal.Width)
+
+# median of each feature
+median(iris$Sepal.Length)
+median(iris$Sepal.Width)
+median(iris$Petal.Length)
+median(iris$Petal.Width)
+
+# standard deviation of each feature
+sd(iris$Sepal.Length)
+sd(iris$Sepal.Width)
+sd(iris$Petal.Length)
+sd(iris$Petal.Width)
+```
+
+To make it easier to read, the results are put in one table, rounded to 2
+decimal places.
+
+```{r}
+means <- c(mean(iris$Sepal.Length), mean(iris$Sepal.Width),
+           mean(iris$Petal.Length), mean(iris$Petal.Width))
+medians <- c(median(iris$Sepal.Length), median(iris$Sepal.Width),
+             median(iris$Petal.Length), median(iris$Petal.Width))
+sds <- c(sd(iris$Sepal.Length), sd(iris$Sepal.Width),
+         sd(iris$Petal.Length), sd(iris$Petal.Width))
+
+stats <- data.frame(Mean = means, Median = medians, SD = sds)
+rownames(stats) <- names(iris)[1:4]
+round(stats, 2)
+```
+
+We can also look at the mean petal measurements for each species.
+
+```{r}
+# mean petal length and width for each species
+tapply(iris$Petal.Length, iris$Species, mean)
+tapply(iris$Petal.Width, iris$Species, mean)
+```
+
+**Interpretation.** Sepal length has the largest mean (5.84 cm) and petal
+width has the smallest (1.20 cm). For sepal length and sepal width, the mean
+and median are very close (5.84 and 5.80, 3.06 and 3.00), so these two
+variables are fairly symmetric.
+
+Petal length is different. Its mean (3.76 cm) is much lower than its median
+(4.35 cm), and it has the largest standard deviation (1.77 cm). This happens
+because the setosa flowers have very short petals (mean 1.462 cm) and pull
+the mean down, while versicolor (4.260 cm) and virginica (5.552 cm) are much
+longer. Petal width shows the same pattern, with a mean of 1.20 cm and a
+median of 1.30 cm. Sepal width has the smallest standard deviation (0.44 cm),
+so it changes the least between flowers. The big spread in the petal
+measurements is a sign that they carry the most information about species.
+
+## Classification with k-NN
+
+### How k-NN works
+
+k-nearest neighbours is a simple classification method. To classify a new
+flower, it measures the distance between that flower and every flower in the
+training data, using the four measurements. It then picks the k closest
+flowers (here k = 5) and looks at their species. The new flower is given the
+species that most of those 5 neighbours have. There is no real "training"
+step; the model just remembers the training data.
+
+### Splitting the data
+
+```{r}
+library(class)
+
+# set the seed so the split is the same every time
+set.seed(123)
+
+# pick 70% of the row numbers for training
+train_rows <- sample(1:nrow(iris), 0.7 * nrow(iris))
+
+train <- iris[train_rows, ]
+test <- iris[-train_rows, ]
+
+nrow(train)
+nrow(test)
+
+# how many of each species in train and test
+table(train$Species)
+table(test$Species)
+```
+
+The training set has 105 flowers and the test set has 45 flowers. The test
+set has 14 setosa, 18 versicolor and 13 virginica, so all three species are
+included.
+
+### Fitting the model
+
+```{r}
+# features (first four columns) and labels
+train_x <- train[, 1:4]
+test_x <- test[, 1:4]
+train_y <- train$Species
+test_y <- test$Species
+
+# k-NN with k = 5
+pred <- knn(train = train_x, test = test_x, cl = train_y, k = 5)
+```
+
+### Confusion matrix and accuracy
+
+```{r}
+# confusion matrix
+cm <- table(Predicted = pred, Actual = test_y)
+cm
+
+# accuracy = correct predictions / total predictions
+accuracy <- sum(diag(cm)) / sum(cm)
+accuracy
+
+# as a percentage
+round(accuracy * 100, 2)
+```
+
+**Interpretation.** In the confusion matrix, the rows are the predicted
+species and the columns are the actual species. The numbers on the diagonal
+are the correct predictions. The model got all 14 setosa and all 13 virginica
+flowers right. Out of the 18 versicolor flowers, 17 were correct and 1 was
+wrongly predicted as virginica.
+
+So the model got 44 out of 45 test flowers right, which is an accuracy of
+97.78%. This is a very good result. The only mistake was between versicolor
+and virginica, which matches what we saw in the plots: these two species
+overlap a little, while setosa is completely separate.
+
+# Conclusion
+
+This project explored the Iris dataset using base R. The data is clean, with
+150 flowers, 50 per species and no missing values.
+
+The plots and statistics showed that petal length and petal width are the
+most useful features. Setosa is easy to tell apart because its petals are
+much smaller. Versicolor and virginica are similar and overlap slightly.
+
+The k-NN model with k = 5 reached an accuracy of 97.78% on the test set,
+making only 1 mistake out of 45 flowers. This shows that a simple method can
+classify iris species very well from the four measurements.
+
+**Recommendations for future analysis:**
+
+- Try different values of k (for example 1, 3, 7 and 9) and compare the
+  accuracy.
+- Scale the features before using k-NN, so all variables count equally in the
+  distance.
+- Use cross-validation instead of one split, because a test set of 45 flowers
+  is small and the accuracy could change with a different seed.
+- Compare k-NN with other methods such as decision trees or logistic
+  regression.
+- Test whether using only the two petal features gives the same accuracy.
